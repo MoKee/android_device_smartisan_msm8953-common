@@ -685,8 +685,11 @@ service vendor.sensors /vendor/bin/sscrpcd
 
 service vendor.sensors.qti /vendor/bin/sensors.qti
     class core
-    user system
-    group system
+    user root
+    group root
+    # Grants the ability for this daemon to bind IPC router ports so it can
+    # register QMI services
+    capabilities NET_BIND_SERVICE
     disabled
 
 on property:ro.vendor.use_data_netmgrd=false
