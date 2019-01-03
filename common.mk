@@ -210,8 +210,8 @@ PRODUCT_BOOT_JARS += \
     ifaa_fw
 
 # Input
-PRODUCT_PACKAGES += \
-    KeyHandlerSmartisan
+# PRODUCT_PACKAGES += \
+#     KeyHandlerSmartisan
 
 # IPv6
 PRODUCT_PACKAGES += \
