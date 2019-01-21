@@ -221,9 +221,9 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.light@2.0-service.smartisan
 
-# LiveDisplay native
+# LiveDisplay
 PRODUCT_PACKAGES += \
-    vendor.mokee.livedisplay@1.0-service-sdm
+    vendor.mokee.livedisplay@2.0-service-sdm
 
 # Media
 PRODUCT_COPY_FILES += \
