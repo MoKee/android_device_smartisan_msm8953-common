@@ -27,20 +27,25 @@ import android.view.ViewConfiguration;
 
 import com.android.internal.os.DeviceKeyHandler;
 
+import org.mokee.internal.util.FileUtils;
+
 public class KeyHandler implements DeviceKeyHandler {
 
     private static final String TAG = "KeyHandler";
 
-    private static final String[] TRUSTED_DEVICE_NAMES = new String[] {
-        "betterlife-blfp",
-        "gf3206",
-        "gf3208",
-        "ix_btp",
+    private static final int KEY_BACK_BETTERLIFE = 0;
+    private static final int KEY_BACK_GF3206 = 1;
+    private static final int KEY_BACK_GF3208 = 2;
+    private static final int KEY_BACK_IDEX = 3;
+
+    private final KeyInfo[] keys = new KeyInfo[] {
+        new KeyInfo("back", "betterlife-blfp"),
+        new KeyInfo("back", "gf3206"),
+        new KeyInfo("back", "gf3208"),
+        new KeyInfo("back", "ix_btp"),
     };
 
     private final int doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
-
-    private int trustedDeviceId = 0;
 
     private long lastTapMillis = 0;
 
@@ -48,24 +53,34 @@ public class KeyHandler implements DeviceKeyHandler {
     }
 
     public KeyEvent handleKeyEvent(KeyEvent event) {
+        boolean handled = false;
+        handled = handleBackKeyEvent(event) || handled;
+        return handled ? null : event;
+    }
+
+    private boolean handleBackKeyEvent(KeyEvent event) {
         // The sensor reports fake DOWN and UP per taps
-        if (event.getScanCode() != 158 || event.getAction() != KeyEvent.ACTION_UP) {
-            return event;
+        if (event.getAction() != KeyEvent.ACTION_UP) {
+            return false;
         }
 
-        if (trustedDeviceId == 0) {
-            final String deviceName = getDeviceName(event);
-            for (String name : TRUSTED_DEVICE_NAMES) {
-                if (name.equals(deviceName)) {
-                    trustedDeviceId = event.getDeviceId();
-                    break;
-                }
-            }
-            return event;
+        KeyInfo matchedKey;
+        int matchedKeyIndex;
+
+        if (keys[KEY_BACK_BETTERLIFE].match(event)) {
+            matchedKey = keys[KEY_BACK_BETTERLIFE];
+            matchedKeyIndex = KEY_BACK_BETTERLIFE;
+        } else if (keys[KEY_BACK_GF3206].match(event)) {
+            matchedKey = keys[KEY_BACK_GF3206];
+            matchedKeyIndex = KEY_BACK_GF3206;
+        } else if (keys[KEY_BACK_GF3208].match(event)) {
+            matchedKey = keys[KEY_BACK_GF3208];
+            matchedKeyIndex = KEY_BACK_GF3208;
+        } else if (keys[KEY_BACK_IDEX].match(event)) {
+            matchedKey = keys[KEY_BACK_IDEX];
+            matchedKeyIndex = KEY_BACK_IDEX;
         } else {
-            if (trustedDeviceId != event.getDeviceId()) {
-                return event;
-            }
+            return false;
         }
 
         final long now = SystemClock.uptimeMillis();
@@ -76,7 +91,7 @@ public class KeyHandler implements DeviceKeyHandler {
         }
 
         lastTapMillis = now;
-        return null;
+        return true;
     }
 
     private String getDeviceName(KeyEvent event) {
@@ -98,6 +113,50 @@ public class KeyHandler implements DeviceKeyHandler {
                         0, flags,
                         InputDevice.SOURCE_KEYBOARD),
                 InputManager.INJECT_INPUT_EVENT_MODE_ASYNC);
+    }
+
+    private class KeyInfo {
+
+        final String deviceName;
+        final int scanCode;
+        int deviceId;
+        int keyCode;
+
+        KeyInfo(String file, String deviceName) {
+            int scanCode;
+            this.deviceName = deviceName;
+            try {
+                scanCode = Integer.parseInt(FileUtils.readOneLine(
+                        "/proc/keypad/" + file));
+            } catch (NumberFormatException ignored) {
+                scanCode = 0;
+            }
+            this.scanCode = scanCode;
+        }
+
+        boolean match(KeyEvent event) {
+            if (deviceId == 0) {
+                final String deviceName = getDeviceName(event);
+                if (this.deviceName.equals(deviceName)) {
+                    deviceId = event.getDeviceId();
+                } else {
+                    return false;
+                }
+            } else {
+                if (deviceId != event.getDeviceId()) {
+                    return false;
+                }
+            }
+
+            if (event.getScanCode() == scanCode) {
+                keyCode = event.getKeyCode();
+            } else {
+                return false;
+            }
+
+            return true;
+        }
+
     }
 
 }
