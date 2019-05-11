@@ -224,6 +224,10 @@ TARGET_RECOVERY_UPDATER_LIBS := librecovery_updater_smartisan
 # SELinux
 BOARD_SEPOLICY_DIRS += $(COMMON_PATH)/sepolicy/vendor-minimal
 
+# Sensors
+TARGET_LD_SHIM_LIBS += /system/vendor/lib/sensors.ssc.so|/system/vendor/lib/libshim_sensors.so
+TARGET_LD_SHIM_LIBS += /system/vendor/lib64/sensors.ssc.so|/system/vendor/lib64/libshim_sensors.so
+
 # Timeservice
 BOARD_USES_QC_TIME_SERVICES := true
 
