@@ -37,17 +37,22 @@ public class KeyHandler implements DeviceKeyHandler {
     private static final int KEY_BACK_GF3206 = 1;
     private static final int KEY_BACK_GF3208 = 2;
     private static final int KEY_BACK_IDEX = 3;
+    private static final int KEY_HOME = 4;
 
     private final KeyInfo[] keys = new KeyInfo[] {
         new KeyInfo("back", "betterlife-blfp"),
         new KeyInfo("back", "gf3206"),
         new KeyInfo("back", "gf3208"),
         new KeyInfo("back", "ix_btp"),
+        new KeyInfo("home", "qpnp_pon");
     };
 
+    private final int singleTapTimeout = 150;
     private final int doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
 
     private long lastTapMillis = 0;
+
+    private Handler handler = new Handler(Looper.getMainLooper());
 
     public KeyHandler(Context context) {
     }
@@ -55,6 +60,7 @@ public class KeyHandler implements DeviceKeyHandler {
     public KeyEvent handleKeyEvent(KeyEvent event) {
         boolean handled = false;
         handled = handleBackKeyEvent(event) || handled;
+        handled = handleHomeKeyEvent(event) || handled;
         return handled ? null : event;
     }
 
@@ -83,6 +89,9 @@ public class KeyHandler implements DeviceKeyHandler {
             return false;
         }
 
+        injectKey(keys[KEY_HOME].keyCode, KeyEvent.ACTION_UP, KeyEvent.FLAG_CANCELED);
+        handler.removeCallbacksAndMessages("home_tap");
+
         final long now = SystemClock.uptimeMillis();
         if (now - lastTapMillis < doubleTapTimeout) {
             injectKey(KeyEvent.KEYCODE_APP_SWITCH);
@@ -91,6 +100,30 @@ public class KeyHandler implements DeviceKeyHandler {
         }
 
         lastTapMillis = now;
+        return true;
+    }
+
+    private boolean handleHomeKeyEvent(KeyEvent event) {
+        final KeyInfo keyHome = keys[KEY_HOME];
+
+        if (!keyHome.match(event)) {
+            return false;
+        }
+
+        switch (event.getAction()) {
+            case KeyEvent.ACTION_DOWN:
+                injectKey(keyHome.keyCode, KeyEvent.ACTION_DOWN, 0);
+                break;
+            case KeyEvent.ACTION_UP:
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        injectKey(keyHome.keyCode, KeyEvent.ACTION_UP, 0);
+                    }
+                }, "home_tap", singleTapTimeout);
+                break;
+        }
+
         return true;
     }
 
