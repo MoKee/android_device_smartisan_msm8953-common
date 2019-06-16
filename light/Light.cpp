@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
- * Copyright (C) 2018 The MoKee Open Source Project
+ * Copyright (C) 2018-2019 The MoKee Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,20 +60,23 @@ namespace V2_0 {
 namespace implementation {
 
 Light::Light(std::pair<std::ofstream, uint32_t>&& lcd_backlight,
-             std::ofstream&& blue_led,
+             std::ofstream&& red_led, std::ofstream&& green_led, std::ofstream&& blue_led,
              std::ofstream&& blue_duty_pcts,
              std::ofstream&& blue_start_idx,
              std::ofstream&& blue_pause_lo,
              std::ofstream&& blue_pause_hi,
              std::ofstream&& blue_ramp_step_ms,
-             std::ofstream&& blue_blink)
+             std::ofstream&& red_blink, std::ofstream&& blue_blink)
     : mLcdBacklight(std::move(lcd_backlight)),
+      mRedLed(std::move(red_led)),
+      mGreenLed(std::move(green_led)),
       mBlueLed(std::move(blue_led)),
       mBlueDutyPcts(std::move(blue_duty_pcts)),
       mBlueStartIdx(std::move(blue_start_idx)),
       mBluePauseLo(std::move(blue_pause_lo)),
       mBluePauseHi(std::move(blue_pause_hi)),
       mBlueRampStepMs(std::move(blue_ramp_step_ms)),
+      mRedBlink(std::move(red_blink)),
       mBlueBlink(std::move(blue_blink)) {
     auto backlightFn(std::bind(&Light::setLcdBacklight, this, std::placeholders::_1));
     auto attentionFn(std::bind(&Light::setAttentionLight, this, std::placeholders::_1));
@@ -145,20 +148,22 @@ void Light::setNotificationLight(const LightState& state) {
 }
 
 void Light::handleSpeakerBatteryLightLocked() {
+    mRedLed << 0 << std::endl;
+    mRedBlink << 0 << std::endl;
+    mGreenLed << 0 << std::endl;
+    mBlueLed << 0 << std::endl;
+    mBlueBlink << 0 << std::endl;
+
     if (isLit(mNotificationState)) {
-        setSpeakerLightLocked(mNotificationState);
+        setNotificationLightLocked(mNotificationState);
     } else if (isLit(mAttentionState)) {
-        setSpeakerLightLocked(mAttentionState);
+        setNotificationLightLocked(mAttentionState);
     } else if (isLit(mBatteryState)) {
-        setSpeakerLightLocked(mBatteryState);
-    } else {
-        // Lights off
-        mBlueLed << 0 << std::endl;
-        mBlueBlink << 0 << std::endl;
+        setBatteryLightLocked(mBatteryState);
     }
 }
 
-void Light::setSpeakerLightLocked(const LightState& state) {
+void Light::setNotificationLightLocked(const LightState& state) {
     int brightness;
     int blink;
     int onMs, offMs;
@@ -179,9 +184,6 @@ void Light::setSpeakerLightLocked(const LightState& state) {
     brightness = (state.color & 0xff000000) >> 24;
     blink = onMs > 0 && offMs > 0;
 
-    // Disable all blinking to start
-    mBlueBlink << 0 << std::endl;
-
     if (blink) {
         stepDuration = RAMP_STEP_DURATION;
         pauseHi = onMs - (stepDuration * RAMP_SIZE * 2);
@@ -191,7 +193,6 @@ void Light::setSpeakerLightLocked(const LightState& state) {
             pauseHi = 0;
         }
 
-        // Blue
         mBlueStartIdx << 0 << std::endl;
         mBlueDutyPcts << getScaledDutyPcts(brightness) << std::endl;
         mBluePauseLo << offMs << std::endl;
@@ -202,6 +203,15 @@ void Light::setSpeakerLightLocked(const LightState& state) {
         mBlueBlink << 1 << std::endl;
     } else {
         mBlueLed << brightness << std::endl;
+    }
+}
+
+void Light::setBatteryLightLocked(const LightState& state) {
+    int level = (state.color & 0xff000000) >> 24;
+    if (level > 10) {
+        mGreenLed << 1 << std::endl;
+    } else {
+        mRedLed << 1 << std::endl;
     }
 }
 
